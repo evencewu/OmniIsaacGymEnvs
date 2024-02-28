@@ -26,7 +26,8 @@ class Balance(Robot):
             #if assets_root_path is None:
             #    carb.log_error("Could not find Isaac Sim assets folder")
             #self._usd_path = assets_root_path + "/Isaac/Robots/Cartpole/cartpole.usd"
-            self._usd_path = "/home/evence/code_file/issacgym/OmniIsaacGymEnvs/omniisaacgymenvs/usd/balance/balance.usd"
+            usd_root_path = "/home/evence/code_file/issacgym/OmniIsaacGymEnvs/omniisaacgymenvs/usd"
+            self._usd_path = usd_root_path + "/balance/balance.usd"
 
         add_reference_to_stage(self._usd_path, prim_path)
 
