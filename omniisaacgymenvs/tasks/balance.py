@@ -27,7 +27,7 @@ class BalanceTask(RLTask):
 
         self._num_envs = self._task_cfg["env"]["numEnvs"]
         self._env_spacing = self._task_cfg["env"]["envSpacing"]
-        self._balance_positions = torch.tensor([0.0, 0.0, 0.30])
+        self._balance_positions = torch.tensor([0.0, 0.0, 0.3])
         self._balance_rotations = torch.tensor([1.0, 0.0, 0.0, 0.0])
 
         self._reset_angle = self._task_cfg["env"]["resetAngle"]
@@ -91,12 +91,18 @@ class BalanceTask(RLTask):
         dof_vel[:, self._joint1_dof_idx] = 0.0
         dof_vel[:, self._joint2_dof_idx] = 0.0
 
+        root_vel = torch.zeros((num_resets, 6), device=self._device)
+        # apply resets
+        
+        
         #forces = torch.zeros((self._balances.count, self._balances.num_dof), device=self._device)
         #forces[:, self._joint1_dof_idx] = 0.0
         #forces[:, self._joint2_dof_idx] = 0.0
 
         # apply randomized joint positions and velocities to environments
         #indices = env_ids.to(dtype=torch.int32)
+        
+        self._balances.set_velocities(root_vel, indices)
         self._balances.set_joint_positions(dof_pos, indices=indices)
         self._balances.set_joint_velocities(dof_vel, indices=indices)
         #self._balances.set_joint_efforts(forces, indices=indices)
@@ -124,6 +130,7 @@ class BalanceTask(RLTask):
         forces[:, self._joint1_dof_idx] = self._max_push_effort * actions[:, 0]
         forces[:, self._joint2_dof_idx] = self._max_push_effort * actions[:, 1]
 
+        #print(forces)
         # apply actions to all of the environments
         indices = torch.arange(self._balances.count, dtype=torch.int32, device=self._device)
         self._balances.set_joint_efforts(forces, indices=indices)
@@ -135,7 +142,7 @@ class BalanceTask(RLTask):
         dof_pos = self._balances.get_joint_positions(clone=False)
         dof_vel = self._balances.get_joint_velocities(clone=False)
         # retrieve imu
-        body_positions, body_orientations  = self._balances.get_world_poses()
+        body_positions, body_orientations  = self._balances.get_local_poses()
 
         # extract joint states for the cart and pole joints
         joint1_pos = dof_pos[:, self._joint1_dof_idx]
@@ -173,10 +180,10 @@ class BalanceTask(RLTask):
         #print(euler)
 
         # define the reward function based on pole angle and robot velocities
-        reward = 1.0 -  angle_normal_line_tensor * angle_normal_line_tensor - 0.01 * torch.abs(joint1_vel) - 0.01 * torch.abs(joint2_vel) - 0.5 * torch.abs(joint1_vel - joint2_vel)
-        
+        #reward = 1.0 -  angle_normal_line_tensor * angle_normal_line_tensor - 0.01 * torch.abs(joint1_vel) - 0.01 * torch.abs(joint2_vel) - 0.01 * torch.abs(joint1_vel + joint2_vel)
+        reward = 1 - angle_normal_line_tensor * angle_normal_line_tensor
         # penalize the policy if the cart moves too far on the rail
-        #reward = torch.where(torch.abs(joint1_pos) > self._reset_dist, torch.ones_like(reward) * -2.0, reward)
+        reward = torch.where(torch.abs(angle_normal_line_tensor) > self._reset_angle, torch.ones_like(reward) * -2.0, reward)
         # penalize the policy if the pole moves beyond 90 degrees
         #reward = torch.where(torch.abs(joint2_pos) > np.pi / 2, torch.ones_like(reward) * -2.0, reward)
 
@@ -190,10 +197,13 @@ class BalanceTask(RLTask):
         rotation = R.from_quat(body_orientations.cpu())
         euler = rotation.as_euler('xyz', degrees=False)
         
-        angle_normal_line =  euler[:,1]
+        angle_pitch = euler[:,1]
+        angle_yaw = euler[:,0]
 
-        #print(angle_normal_line)
-        angle_normal_line_tensor = torch.tensor(angle_normal_line,  dtype=torch.float32, device=self._device)
+        #print(angle_pitch)
+        #print(angle_yaw)
+
+        angle_normal_line_tensor = torch.tensor(angle_pitch,  dtype=torch.float32, device=self._device)
 
         # check for which conditions are met and mark the environments that satisfy the conditions
         resets = torch.where(torch.abs(angle_normal_line_tensor) > self._reset_angle, 1, 0)

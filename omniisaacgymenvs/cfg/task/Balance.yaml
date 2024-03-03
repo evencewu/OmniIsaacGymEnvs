@@ -14,7 +14,7 @@ env:
   # Cartpole reset distance limit
   resetAngle: 1.0
   # Cartpole effort scaling
-  maxEffort: 400.0
+  maxEffort: 3.0
 
   # clip values in observation buffer to be within this range (-5.0 to +5.0)
   clipObservations: 5.0
