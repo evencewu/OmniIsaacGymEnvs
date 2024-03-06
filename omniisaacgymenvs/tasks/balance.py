@@ -181,7 +181,7 @@ class BalanceTask(RLTask):
 
         # define the reward function based on pole angle and robot velocities
         #reward = 1.0 -  angle_normal_line_tensor * angle_normal_line_tensor - 0.01 * torch.abs(joint1_vel) - 0.01 * torch.abs(joint2_vel) - 0.01 * torch.abs(joint1_vel + joint2_vel)
-        reward = 1 - angle_normal_line_tensor * angle_normal_line_tensor
+        reward = 1.0 - angle_normal_line_tensor * angle_normal_line_tensor
         # penalize the policy if the cart moves too far on the rail
         reward = torch.where(torch.abs(angle_normal_line_tensor) > self._reset_angle, torch.ones_like(reward) * -2.0, reward)
         # penalize the policy if the pole moves beyond 90 degrees
