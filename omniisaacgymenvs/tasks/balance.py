@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from omni.isaac.core.articulations import ArticulationView
 from omni.isaac.core.utils.prims import get_prim_at_path
+from omni.isaac.sensor import _sensor
 from omniisaacgymenvs.tasks.base.rl_task import RLTask
 from omniisaacgymenvs.robots.articulations.balance import Balance
 
@@ -18,6 +19,7 @@ class BalanceTask(RLTask):
         self._num_actions = 2
 
         RLTask.__init__(self, name, env)
+
         return
 
     def update_config(self, sim_config):
@@ -32,6 +34,9 @@ class BalanceTask(RLTask):
 
         self._reset_angle = self._task_cfg["env"]["resetAngle"]
         self._max_push_effort = self._task_cfg["env"]["maxEffort"]
+
+        self._imu = _sensor.acquire_imu_sensor_interface()
+        self.read_imu = self._imu.get_sensor_reading(self.default_zero_env_path + "/Balance/Imu_Sensor", use_latest_data = True)
 
     def set_up_scene(self, scene) -> None:
         # first create a single environment
@@ -181,9 +186,9 @@ class BalanceTask(RLTask):
 
         # define the reward function based on pole angle and robot velocities
         #reward = 1.0 -  angle_normal_line_tensor * angle_normal_line_tensor - 0.01 * torch.abs(joint1_vel) - 0.01 * torch.abs(joint2_vel) - 0.01 * torch.abs(joint1_vel + joint2_vel)
-        reward = 1.0 - angle_normal_line_tensor * angle_normal_line_tensor
+        reward = - angle_normal_line_tensor * angle_normal_line_tensor * 10 - 0.05 * torch.abs(joint1_vel) - 0.05 * torch.abs(joint2_vel) - 0.01 * torch.abs(joint1_vel - joint2_vel)
         # penalize the policy if the cart moves too far on the rail
-        reward = torch.where(torch.abs(angle_normal_line_tensor) > self._reset_angle, torch.ones_like(reward) * -2.0, reward)
+        reward = torch.where(torch.abs(angle_normal_line_tensor) > self._reset_angle, torch.ones_like(reward) * -10.0, reward)
         # penalize the policy if the pole moves beyond 90 degrees
         #reward = torch.where(torch.abs(joint2_pos) > np.pi / 2, torch.ones_like(reward) * -2.0, reward)
 
