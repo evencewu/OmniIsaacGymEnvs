@@ -4,7 +4,6 @@ import numpy as np
 import torch
 from omni.isaac.core.articulations import ArticulationView
 from omni.isaac.core.utils.prims import get_prim_at_path
-from omni.isaac.sensor import _sensor
 from omniisaacgymenvs.tasks.base.rl_task import RLTask
 from omniisaacgymenvs.robots.articulations.balance import Balance
 
@@ -35,8 +34,8 @@ class BalanceTask(RLTask):
         self._reset_angle = self._task_cfg["env"]["resetAngle"]
         self._max_push_effort = self._task_cfg["env"]["maxEffort"]
 
-        self._imu = _sensor.acquire_imu_sensor_interface()
-        self.read_imu = self._imu.get_sensor_reading(self.default_zero_env_path + "/Balance/Imu_Sensor", use_latest_data = True)
+        #self._imu = _sensor.acquire_imu_sensor_interface()
+        #self.read_imu = self._imu.get_sensor_reading(self.default_zero_env_path + "/Balance/Imu_Sensor", use_latest_data = True)
 
     def set_up_scene(self, scene) -> None:
         # first create a single environment
@@ -147,6 +146,7 @@ class BalanceTask(RLTask):
         dof_pos = self._balances.get_joint_positions(clone=False)
         dof_vel = self._balances.get_joint_velocities(clone=False)
         # retrieve imu
+        root_velocities = self._balances.get_velocities()
         body_positions, body_orientations  = self._balances.get_local_poses()
 
         # extract joint states for the cart and pole joints
@@ -163,6 +163,9 @@ class BalanceTask(RLTask):
         self.obs_buf[:, 2] = joint2_pos
         self.obs_buf[:, 3] = joint2_vel
         self.obs_buf[:, 4:8] = body_orientations
+        #velocity = root_velocities[:, 0:3]
+        #ang_velocity = root_velocities[:, 3:6]
+
 
         # construct the observations dictionary and return
         observations = {self._balances.name: {"obs_buf": self.obs_buf}}
